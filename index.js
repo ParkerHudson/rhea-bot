@@ -20,7 +20,6 @@ for (const file of commandFiles) {
 	// with the key as the command name and the value as the exported module
 	client.commands.set(command.name, command);
 }
-//test comment
 
 client.on('message', message => {
 	if (!message.content.startsWith(prefix) || message.author.bot) return;
