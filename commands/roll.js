@@ -1,36 +1,72 @@
 module.exports = {
-	name: 'roll',
-	description: 'roll dice in the format XdX where the first X is the number of dice and the second X is the number of sides on the dice',
-	execute(message, args) {
-        var parsedInput = args.toString().split("+");
-        var diceList = [];
-        var totalScore = 0;
-        var diceRoll = 0;
-        function rollDice(size){
-            return 1 + Math.floor(Math.random()*size);
+    name: 'roll',
+    description:
+        'Roll dice in the format XdY (e.g. 2d6) with optional modifiers separated by + (e.g. 2d6+3)',
+    usage: '<dice expression>',
+    args: true,
+    execute(message, args) {
+        if (!args.length) {
+            return message.reply('please provide a dice expression (e.g. `2d6+4`).');
         }
 
-        for(var i = 0; i < parsedInput.length; i++){
-            var diceRoll = parsedInput[i];
+        const expression = args.join('').replace(/\s+/g, '');
+        const segments = expression.split('+').filter(Boolean);
 
-            if(diceRoll.indexOf("d") > 0){
-                var diceParts = diceRoll.split('d');
+        if (!segments.length) {
+            return message.reply('I could not understand that dice expression.');
+        }
 
-                for (var z = 0; z < diceParts[0]; z++){
-                    diceRoll = rollDice(diceParts[1]);
-                    diceList.push(diceRoll);
-                    totalScore += diceRoll;
+        const diceSummary = [];
+        let total = 0;
+
+        for (const segment of segments) {
+            const match = segment.match(/^(\d*)d(\d+)$/i);
+            if (match) {
+                const diceCount = clampDiceCount(match[1] ? parseInt(match[1], 10) : 1);
+                const diceSize = parseInt(match[2], 10);
+
+                if (Number.isNaN(diceSize) || diceSize <= 0) {
+                    return message.reply(`\`${segment}\` is not a valid dice size.`);
                 }
+
+                const rolls = rollMultipleDice(diceCount, diceSize);
+                diceSummary.push(`${segment}: [${rolls.join(', ')}]`);
+                total += rolls.reduce((sum, roll) => sum + roll, 0);
+                continue;
             }
-            else{
-                totalScore = parseInt(diceRoll);
+
+            const modifier = Number(segment);
+            if (Number.isNaN(modifier)) {
+                return message.reply(`I couldn't parse \`${segment}\` as part of the dice expression.`);
             }
+
+            total += modifier;
+            diceSummary.push(`+${modifier}`);
         }
 
-       
-        message.channel.send(`**Dice Rolls: ** ${diceList} \n **Total: ** ${totalScore}`);
-	},
+        const resultMessage = [
+            diceSummary.length ? `**Dice Rolls:** ${diceSummary.join(', ')}` : null,
+            `**Total:** ${total}`,
+        ]
+            .filter(Boolean)
+            .join('\n');
+
+        return message.channel.send(resultMessage);
+    },
 };
 
-    
-        
+function rollMultipleDice(count, size) {
+    const rolls = [];
+    for (let i = 0; i < count; i += 1) {
+        rolls.push(1 + Math.floor(Math.random() * size));
+    }
+    return rolls;
+}
+
+function clampDiceCount(count) {
+    if (Number.isNaN(count) || count <= 0) {
+        return 1;
+    }
+
+    return Math.min(count, 100);
+}

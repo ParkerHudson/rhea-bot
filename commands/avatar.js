@@ -1,19 +1,27 @@
 module.exports = {
-	name: 'avatar',
-    description: 'Displays your avatar or any mentioned users avatar',
+    name: 'avatar',
+    description: 'Displays your avatar or any mentioned user avatar',
     aliases: ['icon'],
     cooldown: 3,
-	execute(message, args) {
-		if (!message.mentions.users.size) {
-            return message.channel.send(`Your avatar: <${message.author.displayAvatarURL}>`);
+    usage: '[@user ...]',
+    execute(message) {
+        if (!message.mentions.users.size) {
+            return message.channel.send(`Your avatar: <${resolveAvatarURL(message.author)}>`);
         }
-    
-        const avatarList = message.mentions.users.map(user => {
-            return `${user.username}'s avatar: <${user.displayAvatarURL}>`;
-        });
-    
-        // send the entire array of strings as a message
-        // by default, discord.js will `.join()` the array with `\n`
-        message.channel.send(avatarList);
-	},
+
+        const avatarList = message.mentions.users.map(
+            user => `${user.username}'s avatar: <${resolveAvatarURL(user)}>`,
+        );
+
+        return message.channel.send(avatarList);
+    },
 };
+
+function resolveAvatarURL(user) {
+    const resolver = user.displayAvatarURL;
+    if (typeof resolver === 'function') {
+        return resolver({ format: 'png', dynamic: true, size: 1024 });
+    }
+
+    return resolver;
+}
